@@ -1,0 +1,1 @@
+export type SingleOrMany<T> = Array<T> | T;
