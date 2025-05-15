@@ -1,0 +1,21 @@
+{
+  "name": "@tangerie/agentbox",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publish": {
+    "include": [
+      "mod.ts",
+      "README.md",
+      "agentbox/**/*.ts"
+    ],
+    "exclude": [
+      "examples",
+      ".env"
+    ]
+  },
+  "exports": "./mod.ts",
+  "tasks": {
+  },
+  "imports": {
+  }
+}
