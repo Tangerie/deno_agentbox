@@ -134,6 +134,8 @@ class CacheScope {
     }
 }
 
+export type { CacheScope };
+
 const _cache = new Cache(config.CACHE_DIR, config.CACHE_CLEAN);
 
 const rootScope = new CacheScope(_cache, []);
