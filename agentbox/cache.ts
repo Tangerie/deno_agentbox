@@ -1,6 +1,6 @@
 import { config } from "./config.ts";
 import { join, dirname } from "@std/path"
-import type { SingleOrMany } from "./types.ts";
+import type { SingleOrMany } from "./internal_types.ts";
 import { asArray, asyncIterMap } from "./util.ts";
 import { existsSync, ensureDir } from "@std/fs"
 

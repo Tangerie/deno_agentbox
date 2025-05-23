@@ -1,4 +1,4 @@
-import { AgentboxSession } from "../agentbox/Session.ts";
+import { AgentboxSession } from "../agentbox/session.ts";
 import "@std/dotenv/load";
 
 const session = AgentboxSession.get(

@@ -1,9 +1,5 @@
 import makeFetchCookie from 'fetch-cookie';
-
-const COMMON_HEADERS = {
-  "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-  "accept": "*/*"
-}
+import { COMMON_HEADERS } from "./constants.ts";
 
 export async function authenticate(username : string, password : string, baseUrl : string) {
     const cookieJar = new makeFetchCookie.toughCookie.CookieJar();

@@ -1,1 +1,1 @@
-export type SingleOrMany<T> = Array<T> | T;
+export type RequestParameters = Record<string, string | number | Array<string | number> | Record<string, string | number>>;

@@ -1,4 +1,4 @@
-import type { SingleOrMany } from "./types.ts";
+import type { SingleOrMany } from "./internal_types.ts";
 
 export function asArray<T>(data : SingleOrMany<T>) {
     return Array.isArray(data) ? data : [data];
