@@ -4,7 +4,6 @@
   "license": "MIT",
   "publish": {
     "include": [
-      "mod.ts",
       "README.md",
       "agentbox/**/*.ts"
     ],
@@ -13,9 +12,15 @@
       ".env"
     ]
   },
-  "exports": "./mod.ts",
-  "tasks": {
-  },
+  "exports": "./agentbox/mod.ts",
   "imports": {
+    "@std/async": "jsr:@std/async@^1.0.13",
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.4",
+    "@std/fs": "jsr:@std/fs@^1.0.17",
+    "@std/path": "jsr:@std/path@^1.0.9",
+    "fetch-cookie": "npm:fetch-cookie@^3.1.0"
+  },
+  "tasks": {
+    "example": "deno run -A --unstable-kv"
   }
 }
