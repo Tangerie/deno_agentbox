@@ -1,10 +1,14 @@
 import { authenticate } from "./auth.ts";
-import { Cache, CacheScope } from "./cache.ts";
+import { Cache, type CacheScope } from "./cache.ts";
 import { config } from "./config.ts";
 
 type AuthState = Awaited<ReturnType<typeof authenticate>>;
 
 const MAX_REQUESTS = 5;
+
+export type AgentboxAPIResponse<T> = { response: T | Record<"errors", Array<Record<"code"| "title" | "detail", string>>> }
+
+type RequestParameters = Record<string, string | number | Array<string | number> | Record<string, string | number>>;
 
 export class AgentboxSession {
     private static sessions : Record<string, AgentboxSession> = {};
@@ -15,7 +19,7 @@ export class AgentboxSession {
     private baseUrl : string;
 
     private numRunningRequests;
-    private curRequests : Array<[string | URL, RequestInit | undefined, (res : Response) => void, (err : any) => void]>;
+    private curRequests : Array<[string | URL, RequestInit | undefined, (res : Response) => void, (err : unknown) => void]>;
 
     private loginResolvers : Array<(auth : AuthState) => void>;
 
@@ -70,6 +74,30 @@ export class AgentboxSession {
         return auth;
     }
 
+    public url(path : string | URL, params : URLSearchParams | RequestParameters = new URLSearchParams()) {
+        const url = typeof path === "string" ? new URL(path, this.baseUrl) : path;
+        if(params instanceof URLSearchParams) {
+            for(const [k, v] of params) {
+                url.searchParams.append(k, v);
+            }
+        } else {
+            for(const [key, value] of Object.entries(params)) {
+                if(Array.isArray(value)) {
+                    for(const item of value) {
+                        url.searchParams.append(`${key}[]`, String(item))
+                    }
+                } else if(typeof value === "object") {
+                    for(const [subKey, subValue] of Object.entries(value)) {
+                        url.searchParams.append(`${key}[${subKey}]`, String(subValue))
+                    }
+                } else {
+                    url.searchParams.append(key, String(value))
+                }
+            }
+        }
+        return url;
+    }
+
     async #request(path : string | URL, _init?: RequestInit) {
         const { cookieStr, csrf } = await this.login(false);
 
@@ -82,7 +110,7 @@ export class AgentboxSession {
             }
         }        
 
-        const url = new URL(path, this.baseUrl)
+        const url = this.url(path);
 
         const res = await fetch(url, init);
         
@@ -117,6 +145,28 @@ export class AgentboxSession {
             this.curRequests.push([path, _init, resolve, reject]);
             this.tryNextRequest();
         })
+    }
+
+    async get<T, K extends string = string>(path : string, params : URLSearchParams | RequestParameters = new URLSearchParams()) {
+        const url = this.url(`/admin/api` + path, params);
+
+        url.searchParams.set("version", "2");
+        
+        const res = await this.request(url, {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json"
+            }
+        }).then(x => x.json() as Promise<AgentboxAPIResponse<Record<K, T>>>);
+
+        return new Promise<T>((resolve, reject) => {
+            if("errors" in res.response) {
+                reject(res.response.errors)
+            } else {
+                resolve(Object.values(res.response).at(0)! as T);
+            }
+        });
+        
     }
 
 }
