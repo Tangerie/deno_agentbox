@@ -1,7 +1,5 @@
 import "@std/dotenv/load"
 
 export const config = {
-    CACHE_DIR: Deno.env.get("AGENTBOX_CACHE_DIR") ?? ".cache",
-    CACHE_CLEAN: Deno.env.get("AGENTBOX_CACHE_CLEAN") === "1",
-    BASE_URL: Deno.env.get("AGENTBOX_BASE_URL") ?? ""
+    MAX_REQUESTS: parseInt(Deno.env.get("AGENTBOX_MAX_REQUESTS") ?? "5")
 } as const;

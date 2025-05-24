@@ -1,9 +1,10 @@
 import { authenticate } from "./auth.ts";
-import { Cache, type CacheScope } from "./cache.ts";
-import { config } from "./config.ts";
-import { DEFAULT_SEARCH_RESPONSE_KEYS, MAX_REQUESTS, PAGE_SIZE, SEARCH_MAX_ERR_COUNT } from "./constants.ts";
+import { Cache, type CacheScope } from "@tangerie/utils/cache"; 
+import { SemaphoreQueue, SingularAsync } from "@tangerie/utils/queue"; 
+import { DEFAULT_SEARCH_RESPONSE_KEYS, PAGE_SIZE, SEARCH_MAX_ERR_COUNT } from "./constants.ts";
 import type { AgentboxAPIResponse, AuthState, Json } from "./internal_types.ts";
 import type { RequestParameters } from "./types.ts";
+import { config } from "./config.ts";
 
 export class AgentboxSession {
     private static sessions : Record<string, AgentboxSession> = {};
@@ -13,19 +14,16 @@ export class AgentboxSession {
     private password : string;
     private baseUrl : string;
 
-    private numRunningRequests;
-    private curRequests : Array<[string | URL, RequestInit | undefined, (res : Response) => void, (err : unknown) => void]>;
-
-    private loginResolvers : Array<(auth : AuthState) => void>;
+    private queue : SemaphoreQueue;
+    private loginSingular : SingularAsync<AuthState>;
 
     private constructor(username : string, password : string, baseUrl : string) {
         this.username = username;
         this.password = password;
         this.baseUrl = baseUrl;
         this.cache = Cache.scope(this.username);
-        this.curRequests = [];
-        this.numRunningRequests = 0;
-        this.loginResolvers = []
+        this.queue = new SemaphoreQueue(config.MAX_REQUESTS);
+        this.loginSingular = new SingularAsync();
     }
 
     public static get(username : string, password? : string, baseUrl? : string) : AgentboxSession {
@@ -33,40 +31,28 @@ export class AgentboxSession {
             return AgentboxSession.sessions[username];
         }
 
-        if(!password) {
-            throw new Error("Password required");
-        }
+        if(!password) throw new Error("Password required");
+        if(!baseUrl) throw new Error("Base URL required");
 
-        AgentboxSession.sessions[username] = new AgentboxSession(username, password, baseUrl ?? config.BASE_URL);
+        AgentboxSession.sessions[username] = new AgentboxSession(username, password, baseUrl);
         return AgentboxSession.sessions[username]!;
+    }
+
+    async #login() {
+        const auth = await authenticate(this.username, this.password, this.baseUrl);
+        await this.cache.set("auth", auth, 1000 * 60 * 60 * 24);
+        return auth;
     }
 
     public async login(force : boolean): Promise<{ cookieStr: string; csrf: string; }> {
         if(!force) {
-            const auth = await this.cache.get<AuthState>("auth", undefined);
+            const auth = await this.cache.get<AuthState>("auth");
             if(auth !== undefined) {
                 return auth;
             }
         }
-        if(this.loginResolvers.length > 0) {
-            return new Promise<AuthState>((resolve) => {
-                this.loginResolvers.push(resolve);
-            })
-        }
 
-        this.loginResolvers.push(() => {});
-        const auth = await authenticate(this.username, this.password, this.baseUrl);
-
-        // Expire in 24 Hours
-        await this.cache.set("auth", auth, 1000 * 60 * 60 * 24);
-
-        for(const resolver of this.loginResolvers) {
-            resolver(auth);
-        }
-
-        this.loginResolvers = [];
-
-        return auth;
+        return await this.loginSingular.run(() => this.#login());
     }
 
     public url(path : string | URL, params : URLSearchParams | RequestParameters = new URLSearchParams()): URL {
@@ -122,27 +108,8 @@ export class AgentboxSession {
         return await fetch(url, init);
     }
 
-    private async tryNextRequest() {
-        if(this.curRequests.length === 0) return;
-        if(this.numRunningRequests >= MAX_REQUESTS) return;
-        const [ path, _init, resolve, reject ] = this.curRequests.shift()!;
-        this.numRunningRequests++;
-        try {
-            const res = await this.#request(path, _init);
-            resolve(res);
-        } catch(err) {
-            reject(err);
-        } finally {
-            this.numRunningRequests--;
-            await this.tryNextRequest();
-        }
-    }
-
     public request(path : string | URL, _init?: RequestInit): Promise<Response> {
-        return new Promise<Response>((resolve, reject) => {
-            this.curRequests.push([path, _init, resolve, reject]);
-            this.tryNextRequest();
-        })
+        return this.queue.run(() => this.#request(path, _init));
     }
 
     async #get<T extends object>(path : string, params : URLSearchParams | RequestParameters) : Promise<T> {
@@ -164,6 +131,10 @@ export class AgentboxSession {
                 resolve(res.response as T);
             }
         });
+    }
+
+    public get<T, K extends string = string>(path : string, params : URLSearchParams | RequestParameters = new URLSearchParams()): Promise<T> {
+        return this.#get<Record<K, T>>(path, params).then(x => Object.values(x).at(0)! as T);
     }
 
     async post(path : string, body : Json): Promise<boolean> {
@@ -228,10 +199,6 @@ export class AgentboxSession {
         });
     }
 
-    public get<T, K extends string = string>(path : string, params : URLSearchParams | RequestParameters = new URLSearchParams()): Promise<T> {
-        return this.#get<Record<K, T>>(path, params).then(x => Object.values(x).at(0)! as T);
-    }
-
     public async *search<T, K extends string = string>(path : string, _params : RequestParameters): AsyncGenerator<T, void, unknown> {
         const params = structuredClone(_params);
         params.limit = PAGE_SIZE;
@@ -265,5 +232,18 @@ export class AgentboxSession {
 
             params.page++;
         }
+    }
+
+    public panel(type : string, panel_ref : string, _params? : URLSearchParams | RequestParameters): Promise<string> {
+        const url = this.url("/admin/panel_lib.php", _params);
+        url.searchParams.set("type", type);
+        url.searchParams.set("panel_ref", panel_ref);
+        url.searchParams.set("page", "1");
+        url.searchParams.set("panel", "2");
+        url.searchParams.set("hgt", "728");
+
+        return this.request(url, {
+            method: "POST"
+        }).then(x => x.text());
     }
 }
