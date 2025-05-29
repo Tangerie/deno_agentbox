@@ -68,13 +68,16 @@ export class AgentboxSession {
             for(const [key, value] of Object.entries(params)) {
                 if(Array.isArray(value)) {
                     for(const item of value) {
+                        if(item === undefined) continue;
                         url.searchParams.append(`${key}[]`, String(item))
                     }
                 } else if(typeof value === "object") {
                     for(const [subKey, subValue] of Object.entries(value)) {
+                        if(subValue === undefined) continue;
                         url.searchParams.append(`${key}[${subKey}]`, String(subValue))
                     }
                 } else {
+                    if(value === undefined) continue;
                     url.searchParams.append(key, String(value))
                 }
             }

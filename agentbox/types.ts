@@ -1,1 +1,1 @@
-export type RequestParameters = Record<string, string | number | Array<string | number> | Record<string, string | number>>;
+export type RequestParameters = Record<string, string | number | Array<string | number> | Record<string, string | number | undefined> | undefined>;
