@@ -29,7 +29,7 @@ const params : RequestParameters = {
     include: contactIncludes,
     filter: {
         status: "all",
-        modifiedAfter: "2025-05-23"
+        modifiedAfter: new Date().toISOString().split("T")[0]
     }
 }
 
