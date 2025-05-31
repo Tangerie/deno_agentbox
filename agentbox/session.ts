@@ -5,6 +5,7 @@ import { DEFAULT_SEARCH_RESPONSE_KEYS, PAGE_SIZE, SEARCH_MAX_ERR_COUNT } from ".
 import type { AgentboxAPIResponse, AuthState, Json } from "./internal_types.ts";
 import type { RequestParameters } from "./types.ts";
 import { config } from "./config.ts";
+import { sleep } from "@nodef/extra-sleep";
 
 export class AgentboxSession {
     private static sessions : Record<string, AgentboxSession> = {};
@@ -234,6 +235,45 @@ export class AgentboxSession {
             currentCount += res[key].length;
 
             params.page++;
+        }
+    }
+
+    public async *searchInBackground<T, K extends string = string>(path : string, _params : RequestParameters): AsyncGenerator<T, void, unknown> {
+        const params = structuredClone(_params);
+        params.limit = PAGE_SIZE;
+
+        const firstPageRes = await this.#get<Record<'items' | 'current' | 'last', string> & Record<K, T[]>>(path, params);
+        const expectedPageCount = Math.ceil(parseInt(firstPageRes.items) / params.limit);
+        const key = Object.keys(firstPageRes).filter(x => !DEFAULT_SEARCH_RESPONSE_KEYS.includes(x)).at(0) as K | undefined;
+        if(!key) {
+            throw new Error("Key not found");
+        }
+        
+        const promises : Set<Promise<void>> = new Set();
+        const items : Array<T> = [];
+
+        let returnedCount = 0;
+        
+        for(let i = 1; i < expectedPageCount + 1; i++) {
+            const currentParams = structuredClone(params);
+            currentParams.page = i;
+            const prom = this.#get<Record<'items' | 'current' | 'last', string> & Record<K, T[]>>(path, currentParams)
+                .then(res => {
+                    if(!(key in res)) {
+                        throw new Error("Key not found");
+                    }
+                    items.push(...res[key]);
+                    promises.delete(prom);
+                })
+            promises.add(prom);
+        }
+
+        while(returnedCount < parseInt(firstPageRes.items)) {
+            while(items.length > 0) {
+                yield items.shift()!;
+                returnedCount++;
+            }
+            await sleep(100);
         }
     }
 
