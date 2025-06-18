@@ -141,7 +141,7 @@ export class AgentboxSession {
         return this.#get<Record<K, T>>(path, params).then(x => Object.values(x).at(0)! as T);
     }
 
-    async post(path : string, body : Json): Promise<boolean> {
+    async post<T>(path : string, body : Json): Promise<T> {
         const url = this.url("/admin/api" + path);
         url.searchParams.set("version", "2");
 
@@ -153,16 +153,20 @@ export class AgentboxSession {
             body: JSON.stringify(body)
         });
 
-        return new Promise<boolean>((resolve, reject) => {
+        return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 reject(res.statusText)
             } else {
-                resolve(res.status >= 200 && res.status < 300);
+                if(res.headers.get("Content-Type") === "application/json") {
+                    resolve(res.json())
+                } else {
+                    resolve(res.text() as Promise<T>)
+                }
             }
         });
     }
 
-    async put(path : string, body : Json): Promise<boolean> {
+    async put<T>(path : string, body : Json): Promise<T> {
         const url = this.url("/admin/api" + path);
         url.searchParams.set("version", "2");
 
@@ -174,11 +178,15 @@ export class AgentboxSession {
             body: JSON.stringify(body)
         });
 
-        return new Promise<boolean>((resolve, reject) => {
+        return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 reject(res.statusText)
             } else {
-                resolve(res.status >= 200 && res.status < 300);
+                if(res.headers.get("Content-Type") === "application/json") {
+                    resolve(res.json())
+                } else {
+                    resolve(res.text() as Promise<T>)
+                }
             }
         });
     }
