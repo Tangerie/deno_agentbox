@@ -160,7 +160,7 @@ export class AgentboxSession {
         return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 if(res.headers.get("Content-Type") === "application/json") {
-                    reject(res.json().then(x => x.response.errors))
+                    reject(res.json().then(x => x?.response?.errors ?? x))
                 } else {
                     reject(res.statusText)
                 }
@@ -189,7 +189,7 @@ export class AgentboxSession {
         return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 if(res.headers.get("Content-Type") === "application/json") {
-                    reject(res.json().then(x => x.response.errors))
+                    reject(res.json().then(x => x?.response?.errors ?? x))
                 } else {
                     reject(res.statusText)
                 }
@@ -217,7 +217,7 @@ export class AgentboxSession {
         return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 if(res.headers.get("Content-Type") === "application/json") {
-                    reject(res.json().then(x => x.response.errors))
+                    reject(res.json().then(x => x?.response?.errors ?? x))
                 } else {
                     reject(res.statusText)
                 }
