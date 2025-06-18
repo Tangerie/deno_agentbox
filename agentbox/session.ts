@@ -156,7 +156,7 @@ export class AgentboxSession {
         return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 if(res.headers.get("Content-Type") === "application/json") {
-                    reject(res.json())
+                    reject(res.json().then(x => x.response.errors))
                 } else {
                     reject(res.statusText)
                 }
@@ -185,7 +185,7 @@ export class AgentboxSession {
         return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
                 if(res.headers.get("Content-Type") === "application/json") {
-                    reject(res.json())
+                    reject(res.json().then(x => x.response.errors))
                 } else {
                     reject(res.statusText)
                 }
@@ -199,7 +199,7 @@ export class AgentboxSession {
         });
     }
 
-    async delete(path : string): Promise<boolean> {
+    async delete<T>(path : string): Promise<T> {
         const url = this.url("/admin/api" + path);
         url.searchParams.set("version", "2");
 
@@ -210,11 +210,19 @@ export class AgentboxSession {
             }
         });
 
-        return new Promise<boolean>((resolve, reject) => {
+        return new Promise<T>((resolve, reject) => {
             if(res.status >= 300) {
-                reject(res.statusText)
+                if(res.headers.get("Content-Type") === "application/json") {
+                    reject(res.json().then(x => x.response.errors))
+                } else {
+                    reject(res.statusText)
+                }
             } else {
-                resolve(res.status >= 200 && res.status < 300);
+                if(res.headers.get("Content-Type") === "application/json") {
+                    resolve(res.json())
+                } else {
+                    resolve(res.text() as Promise<T>)
+                }
             }
         });
     }
