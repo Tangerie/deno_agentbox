@@ -18,6 +18,8 @@ export class AgentboxSession {
     private queue : SemaphoreQueue;
     private loginSingular : SingularAsync<AuthState>;
 
+    private auth : { cookieStr: string; csrf: string; } | undefined = undefined;
+
     private constructor(username : string, password : string, baseUrl : string) {
         this.username = username;
         this.password = password;
@@ -47,13 +49,15 @@ export class AgentboxSession {
 
     public async login(force : boolean): Promise<{ cookieStr: string; csrf: string; }> {
         if(!force) {
-            const auth = await this.cache.get<AuthState>("auth");
-            if(auth !== undefined) {
-                return auth;
+            if(this.auth === undefined) {
+                this.auth = await this.cache.get<AuthState>("auth");
+            }
+            if(this.auth !== undefined) {
+                return this.auth;
             }
         }
-
-        return await this.loginSingular.run(() => this.#login());
+        this.auth = await this.loginSingular.run(() => this.#login());
+        return this.auth;
     }
 
     public url(path : string | URL, params : URLSearchParams | RequestParameters = new URLSearchParams()): URL {
