@@ -14,7 +14,7 @@
     "jsr:@std/path@0.217": "0.217.0",
     "jsr:@std/path@1": "1.0.9",
     "jsr:@std/path@^1.0.9": "1.0.9",
-    "jsr:@tangerie/utils@^2.4.0": "2.4.0",
+    "jsr:@tangerie/utils@^2.5.0": "2.5.0",
     "npm:@types/node@*": "22.10.1",
     "npm:fetch-cookie@^3.1.0": "3.1.0"
   },
@@ -68,8 +68,8 @@
     "@std/path@1.0.9": {
       "integrity": "260a49f11edd3db93dd38350bf9cd1b4d1366afa98e81b86167b4e3dd750129e"
     },
-    "@tangerie/utils@2.4.0": {
-      "integrity": "24f221bc30d9c35ec3f60a6bfc24ccfc5e739202c0c659062c36342e37aa3cc7",
+    "@tangerie/utils@2.5.0": {
+      "integrity": "93bd07f4edee908453b738b3b92c9d803f9009a235c8b715bcdf306e0eeb8c04",
       "dependencies": [
         "jsr:@db/sqlite",
         "jsr:@std/dotenv",
@@ -122,7 +122,7 @@
       "jsr:@std/dotenv@~0.225.4",
       "jsr:@std/fs@^1.0.17",
       "jsr:@std/path@^1.0.9",
-      "jsr:@tangerie/utils@^2.4.0",
+      "jsr:@tangerie/utils@^2.5.0",
       "npm:fetch-cookie@^3.1.0"
     ]
   }
