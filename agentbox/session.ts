@@ -305,7 +305,7 @@ export class AgentboxSession {
         }
     }
 
-    public panel(type : string, panel_ref : string, _params? : URLSearchParams | RequestParameters): Promise<string> {
+    public panel(type : string, panel_ref : string, _params? : URLSearchParams | RequestParameters, asBody = false): Promise<string> {
         const url = this.url("/admin/panel_lib.php", _params);
         url.searchParams.set("type", type);
         url.searchParams.set("panel_ref", panel_ref);
@@ -313,8 +313,21 @@ export class AgentboxSession {
         url.searchParams.set("panel", "2");
         url.searchParams.set("hgt", "728");
 
-        return this.request(url, {
-            method: "POST"
-        }).then(x => x.text());
+        if(asBody) {
+            const body = new URLSearchParams(url.searchParams);
+            url.search = "";
+            return this.request(url, {
+                method: "POST",
+                body,
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                }
+            }).then(x => x.text());
+        } else {
+            return this.request(url, {
+                method: "POST"
+            }).then(x => x.text());
+        }
+
     }
 }
