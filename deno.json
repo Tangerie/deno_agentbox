@@ -1,6 +1,6 @@
 {
   "name": "@tangerie/agentbox",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "license": "MIT",
   "publish": {
     "include": [
@@ -19,7 +19,7 @@
     "@std/dotenv": "jsr:@std/dotenv@^0.225.4",
     "@std/fs": "jsr:@std/fs@^1.0.17",
     "@std/path": "jsr:@std/path@^1.0.9",
-    "@tangerie/utils": "jsr:@tangerie/utils@^2.3.0",
+    "@tangerie/utils": "jsr:@tangerie/utils@^2.4.0",
     "fetch-cookie": "npm:fetch-cookie@^3.1.0"
   },
   "tasks": {
