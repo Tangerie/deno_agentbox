@@ -283,9 +283,9 @@ export class AgentboxSession {
         let returnedCount = 0;
         
         for(let i = 1; i < expectedPageCount + 1; i++) {
-            const currentParams = structuredClone(params);
-            currentParams.page = i;
-            const prom = this.#get<Record<'items' | 'current' | 'last', string> & Record<K, T[]>>(path, currentParams)
+            // const currentParams = structuredClone(params);
+            params.page = i;
+            const prom = this.#get<Record<'items' | 'current' | 'last', string> & Record<K, T[]>>(path, params)
                 .then(res => {
                     if(!(key in res)) {
                         throw new Error("Key not found");
