@@ -1,4 +1,4 @@
-import { authenticate } from "./auth.ts";
+import { authenticate, OAuthConfig } from "./auth.ts";
 import { Cache, type CacheScope } from "@tangerie/utils/cache"; 
 import { SemaphoreQueue, SingularAsync } from "@tangerie/utils/queue"; 
 import { DEFAULT_SEARCH_RESPONSE_KEYS, PAGE_SIZE, SEARCH_MAX_ERR_COUNT } from "./constants.ts";
@@ -13,41 +13,41 @@ export class AgentboxSession {
     private cache : CacheScope;
     private username : string;
     private password : string;
-    private baseUrl : string;
+    private authConfig : OAuthConfig;
 
     private queue : SemaphoreQueue;
     private loginSingular : SingularAsync<AuthState>;
 
-    private auth : { cookieStr: string; csrf: string; } | undefined = undefined;
+    private auth : { cookieStr: string; csrf: string; baseUrl : string; } | undefined = undefined;
 
-    private constructor(username : string, password : string, baseUrl : string) {
+    private constructor(username : string, password : string, authConfig : OAuthConfig) {
         this.username = username;
         this.password = password;
-        this.baseUrl = baseUrl;
+        this.authConfig = authConfig;
         this.cache = Cache.scope(this.username);
         this.queue = new SemaphoreQueue(config.MAX_REQUESTS);
         this.loginSingular = new SingularAsync();
     }
 
-    public static get(username : string, password? : string, baseUrl? : string) : AgentboxSession {
+    public static get(username : string, password? : string, authConfig? : OAuthConfig) : AgentboxSession {
         if(username in AgentboxSession.sessions) {
             return AgentboxSession.sessions[username];
         }
 
         if(!password) throw new Error("Password required");
-        if(!baseUrl) throw new Error("Base URL required");
+        if(!authConfig) throw new Error("Base URL required");
 
-        AgentboxSession.sessions[username] = new AgentboxSession(username, password, baseUrl);
+        AgentboxSession.sessions[username] = new AgentboxSession(username, password, authConfig);
         return AgentboxSession.sessions[username]!;
     }
 
     async #login() {
-        const auth = await authenticate(this.username, this.password, this.baseUrl);
-        await this.cache.set("auth", auth, 1000 * 60 * 60 * 24);
+        const auth = await authenticate(this.username, this.password, this.authConfig);
+        await this.cache.set("auth", auth, 1000 * 3600);
         return auth;
     }
 
-    public async login(force : boolean): Promise<{ cookieStr: string; csrf: string; }> {
+    public async login(force : boolean): Promise<{ cookieStr: string; csrf: string; baseUrl : string; }> {
         if(!force) {
             if(this.auth === undefined) {
                 this.auth = await this.cache.get<AuthState>("auth");
@@ -64,7 +64,7 @@ export class AgentboxSession {
         if(typeof path === "string" && !path.startsWith("/")) {
             throw new Error("URL path must start with /");
         } 
-        const url = typeof path === "string" ? new URL(path, this.baseUrl) : path;
+        const url = typeof path === "string" ? new URL(this.auth?.baseUrl + path) : path;
         if(params instanceof URLSearchParams) {
             for(const [k, v] of params) {
                 url.searchParams.append(k, v);
