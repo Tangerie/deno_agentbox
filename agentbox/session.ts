@@ -203,6 +203,35 @@ export class AgentboxSession {
         });
     }
 
+    async patch<T>(path : string, body : Json): Promise<T> {
+        const url = this.url("/admin/api" + path);
+        url.searchParams.set("version", "2");
+
+        const res = await this.request(url, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+        });
+
+        return new Promise<T>((resolve, reject) => {
+            if(res.status >= 300) {
+                if(res.headers.get("Content-Type") === "application/json") {
+                    reject(res.json().then(x => x?.response?.errors ?? x))
+                } else {
+                    reject(res.statusText)
+                }
+            } else {
+                if(res.headers.get("Content-Type") === "application/json") {
+                    resolve(res.json())
+                } else {
+                    resolve(res.text() as Promise<T>)
+                }
+            }
+        });
+    }
+
     async delete<T>(path : string): Promise<T> {
         const url = this.url("/admin/api" + path);
         url.searchParams.set("version", "2");
