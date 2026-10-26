@@ -9,6 +9,7 @@ const session = AgentboxSession.get(
         oAuthUrl: Deno.env.get("REAPIT_OAUTH_URL")!,
         redirectUrl: Deno.env.get("REAPIT_REDIRECT_URL")!,
         oldOfficeId: Deno.env.get("REAPIT_OLD_OFFICE_NAME")!,
+        totpSecret: Deno.env.get("REAPIT_TOTP_SECRET")!,
     }
 );
 await session.login(false);
