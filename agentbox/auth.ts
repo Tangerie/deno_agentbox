@@ -38,7 +38,7 @@ async function totp(secret : string) : Promise<string> {
 export async function authenticate(username : string, password : string, config : OAuthConfig) {
     const cookieJar = new makeFetchCookie.toughCookie.CookieJar();
     cookieJar.removeAllCookiesSync();
-    const fetchCookie = makeFetchCookie(fetch, cookieJar);
+    const fetchCookie = makeFetchCookie(fetch, cookieJar) as unknown as typeof fetch;
 
     const dec2hex = (dec: number): string => ('0' + dec.toString(16)).substr(-2)
     const array = new Uint32Array(56)
