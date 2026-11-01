@@ -138,6 +138,12 @@ export async function authenticate(username : string, password : string, config 
         redirect: "manual"
     });
 
+    try {
+        new URL(res.headers.get("location")!)
+    } catch {
+        console.log(Object.fromEntries(res.headers.entries()), res.status, res.statusText, JSON.stringify(res, undefined, 2));
+    }
+
     const authCode = new URL(res.headers.get("location")!).searchParams.get("code")!;
 
     res = await fetchCookie(`${config.oAuthUrl}/token`, {
