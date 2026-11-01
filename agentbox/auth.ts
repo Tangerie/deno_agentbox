@@ -13,8 +13,21 @@ export interface OAuthConfig {
     totpSecret : string;
 }
 
+const AUTH_ATTEMPTS = 3;
+const TOTP_STEP = 30000;
+
+let lastTotpWindow = 0;
+
 async function totp(secret : string) : Promise<string> {
     if(secret.startsWith("otpauth://")) secret = new URL(secret).searchParams.get("secret")!;
+
+    // Auth0 rejects a code reused in the same window, and one about to roll over can expire in flight
+    let window = Math.floor(Date.now() / TOTP_STEP);
+    if(window <= lastTotpWindow || Date.now() % TOTP_STEP > TOTP_STEP - 2000) {
+        await new Promise(res => setTimeout(res, TOTP_STEP - (Date.now() % TOTP_STEP) + 250));
+        window = Math.floor(Date.now() / TOTP_STEP);
+    }
+    lastTotpWindow = window;
 
     const clean = secret.replace(/[\s=-]/g, "").toUpperCase();
     const key = await crypto.subtle.importKey(
@@ -26,7 +39,7 @@ async function totp(secret : string) : Promise<string> {
     );
 
     const counter = new DataView(new ArrayBuffer(8));
-    counter.setBigUint64(0, BigInt(Math.floor(Date.now() / 30000)));
+    counter.setBigUint64(0, BigInt(window));
 
     const hmac = new Uint8Array(await crypto.subtle.sign("HMAC", key, counter));
     const off = hmac[19] & 0xf;
@@ -36,6 +49,21 @@ async function totp(secret : string) : Promise<string> {
 }
 
 export async function authenticate(username : string, password : string, config : OAuthConfig) {
+    let lastErr : unknown;
+
+    for(let i = 0; i < AUTH_ATTEMPTS; i++) {
+        try {
+            return await _authenticate(username, password, config);
+        } catch(err) {
+            lastErr = err;
+            console.error("[Auth Retry]", i + 1, err);
+        }
+    }
+
+    throw lastErr;
+}
+
+async function _authenticate(username : string, password : string, config : OAuthConfig) {
     const cookieJar = new makeFetchCookie.toughCookie.CookieJar();
     cookieJar.removeAllCookiesSync();
     const fetchCookie = makeFetchCookie(fetch, cookieJar) as unknown as typeof fetch;
@@ -138,13 +166,13 @@ export async function authenticate(username : string, password : string, config 
         redirect: "manual"
     });
 
-    try {
-        new URL(res.headers.get("location")!)
-    } catch {
-        console.log(Object.fromEntries(res.headers.entries()), res.status, res.statusText, JSON.stringify(res, undefined, 2));
+    const finalLocation = res.headers.get("location");
+    if(!finalLocation) {
+        console.error("[Auth Failed]", res.status, res.statusText, res.url);
+        throw new Error("MFA redirect failed");
     }
 
-    const authCode = new URL(res.headers.get("location")!).searchParams.get("code")!;
+    const authCode = new URL(finalLocation).searchParams.get("code")!;
 
     res = await fetchCookie(`${config.oAuthUrl}/token`, {
         method: "POST",
